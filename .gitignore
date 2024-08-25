@@ -130,4 +130,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-events.out.tfevents.1724605242.Muhammadtarek.218742.0
+events.out.*
