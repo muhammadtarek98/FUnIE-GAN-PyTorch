@@ -7,15 +7,17 @@ import numpy as np
 import torch
 import torch.optim as optim
 from torchvision.utils import make_grid, save_image
-
-from datasets import UnpairDataset, denorm
+from datasets import UnpairDataset, denorm,CustomDataset
 from models import FUnIEUpGenerator, FUnIEUpDiscriminator
 from torch.utils.tensorboard import SummaryWriter
 from utils import AverageMeter, ProgressMeter
-
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
+import numpy as np
+import torchvision
 
 class Trainer(object):
-    def __init__(self, train_loader, valid_loader, lr, epochs, gen_dstd2ehcd_resume, gen_ehcd2dstd_resume, dis_dstd_resume, dis_ehcd_resume, save_path, is_cuda):
+    def __init__(self, train_loader, lr, epochs, gen_dstd2ehcd_resume, gen_ehcd2dstd_resume, dis_dstd_resume, dis_ehcd_resume, save_path, is_cuda,valid_loader=None):
 
         self.train_loader = train_loader
         self.valid_loader = valid_loader
@@ -303,13 +305,13 @@ if __name__ == "__main__":
         torch.cuda.manual_seed(77)
 
     parser = argparse.ArgumentParser(description="PyTorch FUnIE-GAN Training")
-    parser.add_argument("-d", "--data", default="", type=str, metavar="PATH",
+    parser.add_argument("-d", "--data", default="/home/muahmmad/projects/Image_enhancement/dataset/underwater_imagenet", type=str, metavar="PATH",
                         help="path to data (default: none)")
     parser.add_argument("-j", "--workers", default=4, type=int, metavar="N",
                         help="number of data loading workers (default: 4)")
     parser.add_argument("--epochs", default=90, type=int, metavar="N",
                         help="number of total epochs to run")
-    parser.add_argument("-b", "--batch-size", default=256, type=int,
+    parser.add_argument("-b", "--batch-size", default=2, type=int,
                         metavar="N",
                         help="mini-batch size (default: 256), this is the total "
                         "batch size of all GPUs on the current node when "
@@ -324,20 +326,25 @@ if __name__ == "__main__":
                         help="path to latest dstd discriminator checkpoint (default: none)")
     parser.add_argument("--dis-ehcd-resume", default="", type=str, metavar="PATH",
                         help="path to latest ehcd discriminator checkpoint (default: none)")
-    parser.add_argument("--save-path", default="", type=str, metavar="PATH",
+    parser.add_argument("--save-path", default="./", type=str, metavar="PATH",
                         help="path to save results (default: none)")
 
     args = parser.parse_args()
 
     # Build data loaders
-    train_set = UnpairDataset(args.data, (256, 256), "train")
-    valid_set = UnpairDataset(args.data, (256, 256), "valid")
+    transform = A.Compose(is_check_shapes=False, transforms=[
+        A.Resize(height=256, width=256),
+        A.ToFloat(),
+        A.pytorch.ToTensorV2()],
+                          additional_targets={'hr_image': 'image'}, )
+    train_set = CustomDataset(images_dir=args.data,transform=transform)
+    #valid_set = UnpairDataset(args.data, (256, 256), "valid")
     train_loader = torch.utils.data.DataLoader(
         train_set, batch_size=args.batch_size, shuffle=True, num_workers=args.workers)
-    valid_loader = torch.utils.data.DataLoader(
-        valid_set, batch_size=args.batch_size, shuffle=False, num_workers=args.workers)
+    #valid_loader = torch.utils.data.DataLoader(
+    #    valid_set, batch_size=args.batch_size, shuffle=False, num_workers=args.workers)
 
     # Create trainer
-    trainer = Trainer(train_loader, valid_loader, args.lr, args.epochs, args.gen_dstd2ehcd_resume,
+    trainer = Trainer(train_loader, args.lr, args.epochs, args.gen_dstd2ehcd_resume,
                       args.gen_ehcd2dstd_resume, args.dis_dstd_resume, args.dis_ehcd_resume, args.save_path, is_cuda)
     trainer.train()
