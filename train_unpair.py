@@ -345,6 +345,12 @@ if __name__ == "__main__":
     #    valid_set, batch_size=args.batch_size, shuffle=False, num_workers=args.workers)
 
     # Create trainer
-    trainer = Trainer(train_loader=train_loader,valid_loader=train_loader,lr= args.lr, epochs=args.epochs,gen_dstd2ehcd_resume= args.gen_dstd2ehcd_resume,
-                      gen_ehcd2dstd_resume=args.gen_ehcd2dstd_resume, dis_dstd_resume=args.dis_dstd_resume,dis_ehcd_resume= args.dis_ehcd_resume,save_path= args.save_path,is_cuda= is_cuda)
+    trainer = Trainer(train_loader=train_loader,
+                      valid_loader=train_loader,
+                      lr= args.lr,
+                      epochs=args.epochs,
+                      gen_dstd2ehcd_resume= args.gen_dstd2ehcd_resume,
+                      gen_ehcd2dstd_resume=args.gen_ehcd2dstd_resume,
+                      dis_dstd_resume=args.dis_dstd_resume,
+                      dis_ehcd_resume= args.dis_ehcd_resume,save_path= args.save_path,is_cuda= is_cuda)
     trainer.train()
