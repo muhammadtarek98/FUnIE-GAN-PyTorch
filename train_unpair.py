@@ -7,7 +7,7 @@ import numpy as np
 import torch
 import torch.optim as optim
 from torchvision.utils import make_grid, save_image
-from datasets import UnpairDataset, denorm,CustomDataset
+from datasets import UnpairDataset, denorm, CustomDataset
 from models import FUnIEUpGenerator, FUnIEUpDiscriminator
 from torch.utils.tensorboard import SummaryWriter
 from utils import AverageMeter, ProgressMeter
@@ -16,15 +16,17 @@ from albumentations.pytorch import ToTensorV2
 import numpy as np
 import torchvision
 
+
 class Trainer(object):
-    def __init__(self, train_loader, lr, epochs, gen_dstd2ehcd_resume, gen_ehcd2dstd_resume, dis_dstd_resume, dis_ehcd_resume, save_path, is_cuda,valid_loader=None):
+    def __init__(self, train_loader, lr, epochs, gen_dstd2ehcd_resume, gen_ehcd2dstd_resume, dis_dstd_resume,
+                 dis_ehcd_resume, save_path, is_cuda, valid_loader=None):
 
         self.train_loader = train_loader
         self.valid_loader = valid_loader
         self.start_epoch = 0
         self.epochs = epochs
         self.save_path = save_path
-        os.makedirs(f"{self.save_path}/viz", exist_ok=True)
+        os.makedirs(name=f"{self.save_path}/viz", exist_ok=True)
         self.writer = SummaryWriter(log_dir=self.save_path)
 
         self.is_cuda = is_cuda
@@ -50,9 +52,9 @@ class Trainer(object):
         self.mae = torch.nn.L1Loss()
 
         dis_params = list(self.dis_dstd.parameters()) + \
-            list(self.dis_ehcd.parameters())
+                     list(self.dis_ehcd.parameters())
         gen_params = list(self.gen_dstd2ehcd.parameters()) + \
-            list(self.gen_ehcd2dstd.parameters())
+                     list(self.gen_ehcd2dstd.parameters())
         self.dis_optimizer = optim.Adam(
             filter(lambda p: p.requires_grad, dis_params), lr)
         self.gen_optimizer = optim.Adam(
@@ -79,7 +81,7 @@ class Trainer(object):
         gen_losses = AverageMeter("Generator Loss")
         dis_losses = AverageMeter("Discriminator Loss")
         progress = ProgressMeter(len(self.train_loader), [
-                                 batch_time, gen_losses, dis_losses], prefix="Train: ")
+            batch_time, gen_losses, dis_losses], prefix="Train: ")
 
         end = time.time()
         for batch_idx, (dstd_images, ehcd_images) in enumerate(self.train_loader):
@@ -113,7 +115,7 @@ class Trainer(object):
             valid_ehcd = self.dis_ehcd(fake_ehcd)
             recn_dstd = self.gen_ehcd2dstd(fake_ehcd)
             g_loss_dstd = self.mae(valid, valid_ehcd) + \
-                10 * self.mae(dstd_images, recn_dstd)
+                          10 * self.mae(dstd_images, recn_dstd)
             self.gen_optimizer.zero_grad()
             g_loss_dstd.backward()
             self.gen_optimizer.step()
@@ -123,7 +125,7 @@ class Trainer(object):
             valid_dstd = self.dis_dstd(fake_dstd)
             recn_ehcd = self.gen_dstd2ehcd(fake_dstd)
             g_loss_ehcd = self.mae(valid, valid_dstd) + \
-                10 * self.mae(ehcd_images, recn_ehcd)
+                          10 * self.mae(ehcd_images, recn_ehcd)
             self.gen_optimizer.zero_grad()
             g_loss_ehcd.backward()
             self.gen_optimizer.step()
@@ -159,8 +161,8 @@ class Trainer(object):
         batch_time = AverageMeter("Time", "3.3f")
         gen_losses = AverageMeter("Generator Loss")
         dis_losses = AverageMeter("Discriminator Loss")
-        progress = ProgressMeter(len(self.valid_loader), [
-                                 batch_time, gen_losses, dis_losses], prefix="Valid: ")
+        progress = ProgressMeter(len(self.valid_loader), meters=[
+            batch_time, gen_losses, dis_losses], prefix="Valid: ")
 
         with torch.no_grad():
             end = time.time()
@@ -178,7 +180,7 @@ class Trainer(object):
                 valid_dstd = self.dis_dstd(dstd_images)
                 valid_ehcd = self.dis_ehcd(ehcd_images)
                 d_loss_real = self.mse(valid, valid_dstd) + \
-                    self.mse(valid, valid_ehcd)
+                              self.mse(valid, valid_ehcd)
 
                 # Train the discriminator using fake samples
                 fake_dstd = self.gen_ehcd2dstd(ehcd_images)
@@ -186,19 +188,19 @@ class Trainer(object):
                 valid_dstd = self.dis_dstd(fake_dstd)
                 valid_ehcd = self.dis_ehcd(fake_ehcd)
                 d_loss_fake = self.mse(fake, valid_dstd) + \
-                    self.mse(fake, valid_ehcd)
+                              self.mse(fake, valid_ehcd)
 
                 # Train the generator using dstd->ehcd->dstd cycle
                 valid_ehcd = self.dis_ehcd(fake_ehcd)
                 recn_dstd = self.gen_ehcd2dstd(fake_ehcd)
                 g_loss_dstd = self.mse(valid, valid_ehcd) + \
-                    self.mse(dstd_images, recn_dstd)
+                              self.mse(dstd_images, recn_dstd)
 
                 # Train the generator using ehcd->dstd->ehcd cycle
                 valid_dstd = self.dis_dstd(fake_dstd)
                 recn_ehcd = self.gen_dstd2ehcd(fake_dstd)
                 g_loss_ehcd = self.mse(valid, valid_dstd) + \
-                    self.mse(ehcd_images, recn_ehcd)
+                              self.mse(ehcd_images, recn_ehcd)
 
                 # Total loss
                 d_loss = d_loss_real + d_loss_fake
@@ -222,13 +224,13 @@ class Trainer(object):
                     recn_dstd_grid = denorm(
                         make_grid(recn_dstd.data)).div_(255.)
                     save_image(
-                        fake_ehcd_grid, f"{self.save_path}/viz/fake_ehcd_{self.epoch}.png")
+                        fake_ehcd_grid, fp=f"{self.save_path}/viz/fake_ehcd_{self.epoch}.png")
                     save_image(
-                        fake_dstd_grid, f"{self.save_path}/viz/fake_dstd_{self.epoch}.png")
+                        fake_dstd_grid, fp=f"{self.save_path}/viz/fake_dstd_{self.epoch}.png")
                     save_image(
-                        recn_ehcd_grid, f"{self.save_path}/viz/recn_ehcd_{self.epoch}.png")
+                        recn_ehcd_grid, fp=f"{self.save_path}/viz/recn_ehcd_{self.epoch}.png")
                     save_image(
-                        recn_dstd_grid, f"{self.save_path}/viz/recn_dstd_{self.epoch}.png")
+                        recn_dstd_grid, fp=f"{self.save_path}/viz/recn_dstd_{self.epoch}.png")
                     self.writer.add_image(
                         "Viz/Fake Distort", fake_ehcd_grid, self.epoch)
                     self.writer.add_image(
@@ -275,21 +277,23 @@ class Trainer(object):
         model_content = {"best_loss": loss, "epoch": self.epoch}
 
         # Save generator and discriminator
-        self.save_model("gen_dstd2ehcd", self.gen_dstd2ehcd, model_content, is_best)
-        self.save_model("gen_ehcd2dstd", self.gen_ehcd2dstd, model_content, is_best)
-        self.save_model("dis_dstd", self.dis_dstd, model_content, is_best)
-        self.save_model("dis_ehcd", self.dis_ehcd, model_content, is_best)
+        self.save_model(model_type="gen_dstd2ehcd", model=self.gen_dstd2ehcd, model_content=model_content,
+                        is_best=is_best)
+        self.save_model(model_type="gen_ehcd2dstd", model=self.gen_ehcd2dstd, model_content=model_content,
+                        is_best=is_best)
+        self.save_model(model_type="dis_dstd", model=self.dis_dstd, model_content=model_content, is_best=is_best)
+        self.save_model(model_type="dis_ehcd", model=self.dis_ehcd, model_content=model_content, is_best=is_best)
 
     def load(self, gen_dstd2ehcd_resume, gen_ehcd2dstd_resume, dis_dstd_resume, dis_ehcd_resume):
         device = "cuda:0" if self.is_cuda else "cpu"
         gen_dstd2ehcd_epoch, best_loss = self.load_model(
-            "gen_dstd2ehcd", self.gen_dstd2ehcd, gen_dstd2ehcd_resume, device)
+            model_type="gen_dstd2ehcd", model=self.gen_dstd2ehcd, model_path=gen_dstd2ehcd_resume, device=device)
         gen_ehcd2dstd_epoch, _ = self.load_model(
-            "gen_ehcd2dstd", self.gen_ehcd2dstd, gen_ehcd2dstd_resume, device)
+            model_type="gen_ehcd2dstd", model=self.gen_ehcd2dstd, model_path=gen_ehcd2dstd_resume, device=device)
         dis_dstd_epoch, _ = self.load_model(
-            "dis_dstd", self.dis_dstd, dis_dstd_resume, device)
+            model_type="dis_dstd", model=self.dis_dstd, model_path=dis_dstd_resume, device=device)
         dis_dst_epoch, _ = self.load_model(
-            "dis_ehcd", self.dis_ehcd, dis_ehcd_resume, device)
+            model_type="dis_ehcd", model=self.dis_ehcd, model_path=dis_ehcd_resume, device=device)
 
         assert gen_dstd2ehcd_epoch == gen_ehcd2dstd_epoch == dis_dstd_epoch == dis_dst_epoch
         self.start_epoch = gen_dstd2ehcd_epoch + 1
@@ -305,7 +309,8 @@ if __name__ == "__main__":
         torch.cuda.manual_seed(77)
 
     parser = argparse.ArgumentParser(description="PyTorch FUnIE-GAN Training")
-    parser.add_argument("-d", "--data", default="/home/muahmmad/projects/Image_enhancement/dataset/underwater_imagenet", type=str, metavar="PATH",
+    parser.add_argument("-d", "--data", default="/home/muahmmad/projects/Image_enhancement/dataset/underwater_imagenet",
+                        type=str, metavar="PATH",
                         help="path to data (default: none)")
     parser.add_argument("-j", "--workers", default=4, type=int, metavar="N",
                         help="number of data loading workers (default: 4)")
@@ -314,8 +319,8 @@ if __name__ == "__main__":
     parser.add_argument("-b", "--batch-size", default=2, type=int,
                         metavar="N",
                         help="mini-batch size (default: 256), this is the total "
-                        "batch size of all GPUs on the current node when "
-                        "using Data Parallel or Distributed Data Parallel")
+                             "batch size of all GPUs on the current node when "
+                             "using Data Parallel or Distributed Data Parallel")
     parser.add_argument("--lr", "--learning-rate", default=0.1, type=float,
                         metavar="LR", help="initial learning rate")
     parser.add_argument("--gen-dstd2ehcd-resume", default="", type=str, metavar="PATH",
@@ -337,7 +342,7 @@ if __name__ == "__main__":
         A.ToFloat(),
         A.pytorch.ToTensorV2()],
                           additional_targets={'hr_image': 'image'}, )
-    train_set = CustomDataset(images_dir=args.data,transform=transform)
+    train_set = CustomDataset(images_dir=args.data, transform=transform)
     #valid_set = UnpairDataset(args.data, (256, 256), "valid")
     train_loader = torch.utils.data.DataLoader(
         train_set, batch_size=args.batch_size, shuffle=True, num_workers=args.workers)
@@ -347,10 +352,10 @@ if __name__ == "__main__":
     # Create trainer
     trainer = Trainer(train_loader=train_loader,
                       valid_loader=train_loader,
-                      lr= args.lr,
+                      lr=args.lr,
                       epochs=args.epochs,
-                      gen_dstd2ehcd_resume= args.gen_dstd2ehcd_resume,
+                      gen_dstd2ehcd_resume=args.gen_dstd2ehcd_resume,
                       gen_ehcd2dstd_resume=args.gen_ehcd2dstd_resume,
                       dis_dstd_resume=args.dis_dstd_resume,
-                      dis_ehcd_resume= args.dis_ehcd_resume,save_path= args.save_path,is_cuda= is_cuda)
+                      dis_ehcd_resume=args.dis_ehcd_resume, save_path=args.save_path, is_cuda=is_cuda)
     trainer.train()
